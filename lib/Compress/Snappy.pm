@@ -29,7 +29,7 @@ Compress::Snappy - Perl interface to Google's Snappy (de)compressor
 
 =head1 SYNOPSIS
 
-    use Compress::
+    use Compress::Snappy;
 
     my $dest = compress($source);
     my $dest = decompress($source);
