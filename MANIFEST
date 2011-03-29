@@ -1,0 +1,22 @@
+Changes
+lib/Compress/Snappy.pm
+Makefile.PL
+MANIFEST			This list of files
+ppport.h
+README
+Snappy.xs
+src/csnappy.h
+src/csnappy_compress.c
+src/csnappy_decompress.c
+src/csnappy_internal.h
+t/00_compile.t
+t/01_snappy.t
+xt/kwalitee.t
+xt/leaktrace.t
+xt/perlcritic.t
+xt/perlcriticrc
+xt/pod.t
+xt/pod_coverage.t
+xt/portability_filenames.t
+xt/valgrind.t
+xt/vars.t

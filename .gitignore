@@ -1,0 +1,9 @@
+Compress-Snappy-*
+MANIFEST.bak
+Makefile
+Makefile.old
+Snappy.bs
+Snappy.c
+Snappy.o
+blib/
+pm_to_blib
