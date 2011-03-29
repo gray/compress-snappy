@@ -16,7 +16,7 @@ eval {
     DynaLoader::bootstrap(__PACKAGE__, $VERSION);
 };
 
-our @EXPORT = qw(compress decompress);
+our @EXPORT = qw(compress decompress uncompress);
 
 
 1;

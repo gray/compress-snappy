@@ -40,6 +40,8 @@ OUTPUT:
 SV *
 decompress (buffer)
   SV *buffer
+ALIAS:
+    uncompress = 1
 PREINIT:
     char *in, *out;
     STRLEN len;
