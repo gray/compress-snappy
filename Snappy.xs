@@ -34,6 +34,7 @@ CODE:
                     working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
     RETVAL = newSVpv(out, compressed_len);
+    Safefree(out);
 OUTPUT:
     RETVAL
 
@@ -57,5 +58,6 @@ CODE:
         XSRETURN_UNDEF;
     }
     RETVAL = newSVpv(out, decompressed_len);
+    Safefree(out);
 OUTPUT:
     RETVAL
