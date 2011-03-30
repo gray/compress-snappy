@@ -13,7 +13,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
  * input data that is "source_len" bytes in length;
  */
 size_t
-snappy_max_compressed_length(size_t source_len);
+snappy_max_compressed_length(size_t source_len) __attribute__((const));
 
 /*
  * Flat array compression that does not emit the "uncompressed length"

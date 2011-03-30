@@ -33,20 +33,20 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
-#include "csnappy.h"
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/module.h>
+#include "linux/csnappy.h"
 #else
+#include "csnappy.h"
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #endif
 
 
-#if defined(HAVE_BUILTIN_CTZ) || __GNUC__ >= 4 || (__GNUC__ ==3 && __GNUC_MINOR__ >= 4)
+#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__) || __GNUC__ >= 4 || (__GNUC__ ==3 && __GNUC_MINOR__ >= 4)
 
 static inline int FindLSBSetNonZero(uint32_t n)
 {
@@ -91,9 +91,6 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 #endif /* End portable versions. */
 
 
-/* Maximum lengths of varint encoding of uint32_t. */
-static const int Varint__kMax32 = 5;
-
 static inline char*
 Varint__Encode32(char *sptr, uint32_t v)
 {
@@ -121,32 +118,6 @@ Varint__Encode32(char *sptr, uint32_t v)
 		*(ptr++) = v>>28;
 	}
 	return (char*)ptr;
-}
-
-
-struct UncheckedByteArraySink {
-	char *dest;
-};
-
-static inline void
-UBAS__init(struct UncheckedByteArraySink *this, char *dest)
-{
-	this->dest = dest;
-}
-
-static inline void
-UBAS__Append(struct UncheckedByteArraySink *this, const char *data, size_t n)
-{
-	/* Do no copying if the caller filled in the result of GetAppendBuffer() */
-	if (data != this->dest)
-		memcpy(this->dest, data, n);
-	this->dest += n;
-}
-
-static inline char*
-UBAS__GetAppendBuffer(struct UncheckedByteArraySink *this, size_t len, char *scratch)
-{
-	return this->dest;
 }
 
 
@@ -300,8 +271,8 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 			n >>= 8;
 			count++;
 		}
-		assert(count >= 1);
-		assert(count <= 4);
+		DCHECK_GE(count, 1);
+		DCHECK_LE(count, 4);
 		*base = LITERAL | ((59+count) << 2);
 	}
 	memcpy(op, literal, len);
@@ -317,7 +288,7 @@ EmitCopyLessThan64(char* op, int offset, int len)
 
 	if ((len < 12) && (offset < 2048)) {
 		int len_minus_4 = len - 4;
-		assert(len_minus_4 < 8); /* Must fit in 3 bits */
+		DCHECK_LT(len_minus_4, 8); /* Must fit in 3 bits */
 		*op++ = COPY_1_BYTE_OFFSET | ((len_minus_4) << 2) | ((offset >> 8) << 5);
 		*op++ = offset & 0xff;
 	} else {
@@ -369,7 +340,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 
 char*
 snappy_compress_fragment(
-	const char const *input,
+	const char *input,
 	const size_t input_size,
 	char *op,
 	void *working_memory,
@@ -381,7 +352,7 @@ snappy_compress_fragment(
 	uint16_t *table = (uint16_t*)working_memory;
 	/* "ip" is the input pointer, and "op" is the output pointer. */
 	const char* ip = input;
-	assert(input_size <= kBlockSize);
+	DCHECK_LE(input_size, kBlockSize);
 	const char* ip_end = input + input_size;
 	const char* base_ip = ip;
 	/* Bytes in [next_emit, ip) will be emitted as literal bytes. Or
@@ -391,6 +362,8 @@ snappy_compress_fragment(
 	const int kInputMarginBytes = 15;
 	if (unlikely(input_size < kInputMarginBytes))
 		goto emit_remainder;
+
+	memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
 
 	const char* ip_limit = input + input_size - kInputMarginBytes;
 	uint32_t next_hash = Hash(++ip, shift);
@@ -505,7 +478,7 @@ snappy_compress_fragment(
 EXPORT_SYMBOL(snappy_compress_fragment);
 #endif
 
-size_t
+size_t __attribute__((const))
 snappy_max_compressed_length(size_t source_len)
 {
 	return 32 + source_len + source_len/6;
@@ -535,81 +508,32 @@ snappy_compress(
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
-	struct ByteArraySource reader;
-	struct UncheckedByteArraySink writer;
-	BAS__init(&reader, input, input_length);
-	UBAS__init(&writer, compressed);
-
+	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
+	int workmem_size;
+	int num_to_read;
 	size_t written = 0;
-	int N = BAS__Available(&reader);
-	char ulength[Varint__kMax32];
-	char *p = Varint__Encode32(ulength, N);
-	UBAS__Append(&writer, ulength, p - ulength);
-	written += (p - ulength);
-
-	char *scratch = NULL;
-	char *scratch_output = NULL;
-
-	while (N > 0) {
-		/* Get next block to compress (without copying if possible) */
-		size_t fragment_size;
-		const char *fragment = BAS__Peek(&reader, &fragment_size);
-		DCHECK_NE(fragment_size, 0);
-		const int num_to_read = MIN_int(N, kBlockSize);
-		size_t bytes_read = fragment_size;
-
-		int pending_advance = 0;
-		if (bytes_read >= num_to_read) {
-			/* Buffer returned by reader is large enough */
-			pending_advance = num_to_read;
-			fragment_size = num_to_read;
-		} else {
-			/* Read into scratch buffer.
-			 * If this is the last iteration, we want to allocate N bytes
-			 * of space, otherwise the max possible kBlockSize space.
-			 * num_to_read contains exactly the correct value */
-			if (scratch == NULL)
-				scratch = malloc(num_to_read);
-			memcpy(scratch, fragment, bytes_read);
-			BAS__Skip(&reader, bytes_read);
-
-			while (bytes_read < num_to_read) {
-				fragment = BAS__Peek(&reader, &fragment_size);
-				size_t n = MIN_sizet(fragment_size, num_to_read - bytes_read);
-				memcpy(scratch + bytes_read, fragment, n);
-				bytes_read += n;
-				BAS__Skip(&reader, n);
+	char *p = Varint__Encode32(compressed, (uint32_t)input_length);
+	written += (p - compressed);
+	compressed = p;
+	while (input_length > 0) {
+		num_to_read = MIN_int(input_length, kBlockSize);
+		workmem_size = workmem_bytes_power_of_two;
+		if (num_to_read < kBlockSize) {
+			for (workmem_size = 9;
+			     workmem_size < workmem_bytes_power_of_two;
+			     ++workmem_size) {
+				if ((1 << (workmem_size-1)) >= num_to_read)
+					break;
 			}
-			DCHECK_EQ(bytes_read, num_to_read);
-			fragment = scratch;
-			fragment_size = num_to_read;
 		}
-		DCHECK_EQ(fragment_size, num_to_read);
-
-		/* Compress input_fragment and append to dest */
-		const int max_output = snappy_max_compressed_length(num_to_read);
-
-		/* Need a scratch buffer for the output, in case the byte sink doesn't
-		 * have room for us directly.
-		 * Since we encode kBlockSize regions followed by a region
-		 * which is <= kBlockSize in length, a previously allocated
-		 * scratch_output[] region is big enough for this iteration. */
-		if (scratch_output == NULL)
-			scratch_output = malloc(max_output);
-		char *dest = UBAS__GetAppendBuffer(&writer, max_output, scratch_output);
-		memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
-		char *end = snappy_compress_fragment(
-				fragment, fragment_size, dest,
-				working_memory, workmem_bytes_power_of_two);
-		UBAS__Append(&writer, dest, end - dest);
-		written += (end - dest);
-
-		N -= num_to_read;
-		BAS__Skip(&reader, pending_advance);
+		p = snappy_compress_fragment(
+				input, num_to_read, compressed,
+				working_memory, workmem_size);
+		written += (p - compressed);
+		compressed = p;
+		input_length -= num_to_read;
+		input += num_to_read;
 	}
-
-	free(scratch);
-	free(scratch_output);
 	*compressed_length = written;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
