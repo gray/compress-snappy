@@ -11,7 +11,7 @@ use Compress::Zlib   ();
 
 my %opts = (
     iterations => -1,
-    size       => 1,  # kB
+    size       => 10,  # KiB
 );
 GetOptions(\%opts, 'iterations|i=i', 'size|s=f',);
 
