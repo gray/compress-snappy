@@ -56,6 +56,8 @@ buffer can be either a scalar or a scalar reference.
 
 =head2 decompress
 
+=head2 uncompress
+
     $string = decompress($buffer)
 
 Decompresses the given buffer and returns the resulting string. The input
