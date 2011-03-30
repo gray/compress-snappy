@@ -1,4 +1,9 @@
 Revision history for Compress-Snappy
 
+0.02  Wed Mar 30 00:53:02 UTC 2011
+    - Fixed memory leak.
+    - Added uncompress alias.
+    - Added benchmarking script.
+
 0.01  Tue Mar 29 14:28:14 UTC 2011
     - Initial distribution.
