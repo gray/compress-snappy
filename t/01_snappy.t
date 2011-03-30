@@ -3,9 +3,18 @@ use warnings;
 use Test::More;
 use Compress::Snappy;
 
-my $in = 'test' x 200;
-my $compressed = compress($in);
-my $decompressed = decompress($compressed);
-is($decompressed, $in);
+{
+    no warnings 'uninitialized';
+    my $compressed = compress(undef);
+    my $decompressed = decompress($compressed);
+    is($decompressed, '', 'undef');
+}
+
+for my $len (0 .. 1_024) {
+    my $in = '0' x $len;
+    my $compressed = compress($in);
+    my $decompressed = decompress($compressed);
+    is($decompressed, $in, "length: $len");
+}
 
 done_testing;

@@ -22,6 +22,7 @@ PREINIT:
     void *working_memory;
 CODE:
     in = SvPVbyte(buffer, len);
+    if (! len) XSRETURN_NO;
     max_compressed_len = snappy_max_compressed_length(len);
     Newx(out, max_compressed_len, char);
     if (! out) XSRETURN_UNDEF;
@@ -49,6 +50,7 @@ PREINIT:
     size_t decompressed_len;
 CODE:
     in = SvPVbyte(buffer, len);
+    if (! len) XSRETURN_NO;
     if (! snappy_get_uncompressed_length(in, len, &decompressed_len))
         XSRETURN_UNDEF;
     Newx(out, decompressed_len, char);
