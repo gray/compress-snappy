@@ -1,5 +1,10 @@
 Revision history for Compress-Snappy
 
+0.03  Thu Mar 31 18:00:34 UTC 2011
+    - Added support for scalar ref input, as previously documented.
+    - Fixed functions to return empty string, not undef, when input is empty.
+    - Added possible fix for Win32 multiplicity.
+
 0.02  Wed Mar 30 00:53:02 UTC 2011
     - Fixed memory leak.
     - Added uncompress alias.
