@@ -17,4 +17,7 @@ for my $len (0 .. 1_024) {
     is($decompressed, $in, "length: $len");
 }
 
+my $scalar = '0' x 1_024;
+ok(compress($scalar) eq compress(\$scalar), 'scalar ref');
+
 done_testing;
