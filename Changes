@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.04  Fri Apr  1 22:19:43 UTC 2011
+    - Fixed XS version number for 5.6.2 compatibility.
+
 0.03  Thu Mar 31 18:00:34 UTC 2011
     - Added support for scalar ref input, as previously documented.
     - Fixed functions to return empty string, not undef, when input is empty.
