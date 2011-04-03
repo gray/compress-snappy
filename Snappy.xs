@@ -1,6 +1,8 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+
+#define NEED_sv_2pvbyte
 #include "ppport.h"
 
 #include "src/csnappy_compress.c"
