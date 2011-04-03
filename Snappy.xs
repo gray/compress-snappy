@@ -36,7 +36,7 @@ CODE:
     snappy_compress(in, len, out, &compressed_len,
                     working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
-    RETVAL = newSVpv(out, compressed_len);
+    RETVAL = newSVpvn(out, compressed_len);
     Safefree(out);
 OUTPUT:
     RETVAL
@@ -63,7 +63,7 @@ CODE:
         Safefree(out);
         XSRETURN_UNDEF;
     }
-    RETVAL = newSVpv(out, decompressed_len);
+    RETVAL = newSVpvn(out, decompressed_len);
     Safefree(out);
 OUTPUT:
     RETVAL
