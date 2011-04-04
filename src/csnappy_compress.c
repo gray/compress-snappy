@@ -46,7 +46,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 
-#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__) || __GNUC__ >= 4 || (__GNUC__ ==3 && __GNUC_MINOR__ >= 4)
+#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__)
 
 static inline int FindLSBSetNonZero(uint32_t n)
 {
@@ -63,8 +63,7 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 static inline int FindLSBSetNonZero(uint32_t n)
 {
 	int rc = 31;
-	int i;
-	uint32_t shift;
+	int i, shift;
 	for (i = 4, shift = 1 << 4; i >= 0; --i) {
 		const uint32_t x = n << shift;
 		if (x != 0) {
@@ -341,7 +340,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 char*
 snappy_compress_fragment(
 	const char *input,
-	const size_t input_size,
+	const uint32_t input_size,
 	char *op,
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
@@ -478,8 +477,8 @@ snappy_compress_fragment(
 EXPORT_SYMBOL(snappy_compress_fragment);
 #endif
 
-size_t __attribute__((const))
-snappy_max_compressed_length(size_t source_len)
+uint32_t __attribute__((const))
+snappy_max_compressed_length(uint32_t source_len)
 {
 	return 32 + source_len + source_len/6;
 }
@@ -493,26 +492,21 @@ static inline int MIN_int(int a, int b)
 	if (a > b) return b;
 	else return a;
 }
-static inline size_t MIN_sizet(size_t a, size_t b)
-{
-	if (a > b) return b;
-	else return a;
-}
 
 void
 snappy_compress(
 	const char *input,
-	size_t input_length,
+	uint32_t input_length,
 	char *compressed,
-	size_t *compressed_length,
+	uint32_t *compressed_length,
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
 	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
 	int workmem_size;
 	int num_to_read;
-	size_t written = 0;
-	char *p = Varint__Encode32(compressed, (uint32_t)input_length);
+	uint32_t written = 0;
+	char *p = Varint__Encode32(compressed, input_length);
 	written += (p - compressed);
 	compressed = p;
 	while (input_length > 0) {
@@ -573,7 +567,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	size_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
+	uint32_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
 	if (!feof(input_file))
 	{
 		fprintf(stderr, "input was longer than %d, aborting.\n", MAX_INPUT_SIZE);
@@ -584,7 +578,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(input_file);
 
-	size_t max_compressed_len = snappy_max_compressed_length(input_len);
+	uint32_t max_compressed_len = snappy_max_compressed_length(input_len);
 	char *output_buffer = (char*)malloc(max_compressed_len);
 	if (!output_buffer)
 	{
@@ -602,7 +596,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	size_t compressed_len;
+	uint32_t compressed_len;
 	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len,
 			working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(input_bufer);
