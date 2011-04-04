@@ -4,11 +4,12 @@ use strict;
 use warnings;
 use parent qw(Exporter);
 
+use XSLoader;
+
 our $VERSION    = '0.05';
 our $XS_VERSION = $VERSION;
 $VERSION = eval $VERSION;
 
-use XSLoader;
 XSLoader::load(__PACKAGE__, $XS_VERSION);
 
 our @EXPORT = qw(compress decompress uncompress);
