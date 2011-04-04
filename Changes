@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.06  Mon Apr  4 07:10:20 UTC 2011
+    - Added suport for big endian systems.
+
 0.05  Sat Apr  2 07:46:53 UTC 2011
     - Fixed test so it actually tested this distribution.
     - Added explicit request for ppport to provide SvPvbyte function.
