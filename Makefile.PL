@@ -17,7 +17,8 @@ my %conf = (
     },
     dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean  => { FILES    => 'Compress-Snappy-*' },
-    DEFINE => pack('L', 1) ne pack('N', 1) ? '-D__LITTLE_ENDIAN' : '',
+    DEFINE => pack('L', 1) ne pack('N', 1)
+        ? '-D__LITTLE_ENDIAN' : '-D__BIG_ENDIAN',
 );
 
 my $eumm_version =  do {
