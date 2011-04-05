@@ -15,57 +15,53 @@ MODULE = Compress::Snappy    PACKAGE = Compress::Snappy
 PROTOTYPES: ENABLE
 
 SV *
-compress (buffer)
-  SV *buffer
+compress (sv)
+  SV *sv
 PREINIT:
-    char *in, *out;
+    char *str;
     STRLEN len;
     uint32_t max_compressed_len, compressed_len;
     void *working_memory;
 CODE:
-    if (SvROK(buffer)) buffer = SvRV(buffer);
-    if (! SvOK(buffer)) XSRETURN_NO;
-    in = SvPVbyte(buffer, len);
+    if (SvROK(sv)) sv = SvRV(sv);
+    if (! SvOK(sv)) XSRETURN_NO;
+    str = SvPVbyte(sv, len);
     if (! len) XSRETURN_NO;
     max_compressed_len = snappy_max_compressed_length(len);
-    Newx(out, max_compressed_len, char);
-    if (! out) XSRETURN_UNDEF;
+    RETVAL = newSV(max_compressed_len);
+    if (! RETVAL) XSRETURN_UNDEF;
     Newx(working_memory, SNAPPY_WORKMEM_BYTES, void);
-    if (! working_memory) {
-        Safefree(out);
-        XSRETURN_UNDEF;
-    }
-    snappy_compress(in, len, out, &compressed_len,
+    if (! working_memory) XSRETURN_UNDEF;
+    snappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
                     working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
-    RETVAL = newSVpvn(out, compressed_len);
-    Safefree(out);
+    SvCUR_set(RETVAL, compressed_len);
+    SvPOK_on(RETVAL);
 OUTPUT:
     RETVAL
 
 SV *
-decompress (buffer)
-  SV *buffer
+decompress (sv)
+  SV *sv
 ALIAS:
     uncompress = 1
 PREINIT:
-    char *in, *out;
+    char *str;
     STRLEN len;
     uint32_t decompressed_len;
 CODE:
-    if (SvROK(buffer)) buffer = SvRV(buffer);
-    if (! SvOK(buffer)) XSRETURN_NO;
-    in = SvPVbyte(buffer, len);
+    if (SvROK(sv)) sv = SvRV(sv);
+    if (! SvOK(sv)) XSRETURN_NO;
+    str = SvPVbyte(sv, len);
     if (! len) XSRETURN_NO;
-    if (snappy_get_uncompressed_length(in, len, &decompressed_len))
+    if (snappy_get_uncompressed_length(str, len, &decompressed_len))
         XSRETURN_UNDEF;
-    Newx(out, decompressed_len, char);
-    if (! out) XSRETURN_UNDEF;
-    if (snappy_decompress(in, len, out, decompressed_len)) {
-        Safefree(out);
+    RETVAL = newSV(decompressed_len);
+    if (! RETVAL) XSRETURN_UNDEF;
+    if (snappy_decompress(str, len, SvPVX(RETVAL), decompressed_len)) {
         XSRETURN_UNDEF;
     }
-    RETVAL = newSVpvn(out, decompressed_len);
-    Safefree(out);
+    SvCUR_set(RETVAL, decompressed_len);
+    SvPOK_on(RETVAL);
 OUTPUT:
     RETVAL
