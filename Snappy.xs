@@ -58,9 +58,8 @@ CODE:
         XSRETURN_UNDEF;
     RETVAL = newSV(decompressed_len);
     if (! RETVAL) XSRETURN_UNDEF;
-    if (snappy_decompress(str, len, SvPVX(RETVAL), decompressed_len)) {
+    if (snappy_decompress(str, len, SvPVX(RETVAL), decompressed_len))
         XSRETURN_UNDEF;
-    }
     SvCUR_set(RETVAL, decompressed_len);
     SvPOK_on(RETVAL);
 OUTPUT:
