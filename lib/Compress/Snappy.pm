@@ -61,6 +61,36 @@ buffer can be either a scalar or a scalar reference.
 
 On error (in case of corrupted data) undef is returned.
 
+=head1 PERFORMANCE
+
+This distribution contains a benchmarking script which compares serveral
+compression modules available on CPAN.  These are the results on a MacBook
+2GHz Core 2 Duo (64-bit) with Perl 5.12.3, using a message size of 10KiB:
+
+    Compressible data - compression
+    -------------------------------
+    Compress::Snappy::compress 827076/s  808 MB/s
+    Compress::LZF::compress    295588/s  289 MB/s
+    Compress::Zlib::compress     4483/s    4 MB/s
+
+    Compressible data - decompression
+    ---------------------------------
+    Compress::Snappy::decompress 811471/s  792 MB/s
+    Compress::LZF::decompress    337317/s  329 MB/s
+    Compress::Snappy::uncompress   6399/s    6 MB/s
+
+    Uncompressible data - compression
+    ---------------------------------
+    Compress::Snappy::compress 2123851/s  2074 MB/s
+    Compress::LZF::compress     809561/s   791 MB/s
+    Compress::Zlib::compress      4622/s     5 MB/s
+
+    Unompressable data - decompression
+    ----------------------------------
+    Compress::LZF::decompress    2969268/s  2900 MB/s
+    Compress::Snappy::decompress 2776948/s  2712 MB/s
+    Compress::Snappy::uncompress    6576/s     6 MB/s
+
 =head1 SEE ALSO
 
 L<http://code.google.com/p/snappy/>
