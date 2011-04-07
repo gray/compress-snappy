@@ -85,7 +85,7 @@ compression modules available on CPAN.  These are the results on a MacBook
     Compress::LZF::compress     809561/s   791 MB/s
     Compress::Zlib::compress      4622/s     5 MB/s
 
-    Unompressable data - decompression
+    Unompressible data - decompression
     ----------------------------------
     Compress::LZF::decompress    2969268/s  2900 MB/s
     Compress::Snappy::decompress 2776948/s  2712 MB/s

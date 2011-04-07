@@ -52,7 +52,7 @@ $zlib   = Compress::Zlib::compress($data);
 print "Uncompressible data - compression\n", '-'x33, "\n";
 run(\%compress);
 print "\n";
-print "Uncompressable data - decompression\n", '-'x35, "\n";
+print "Uncompressible data - decompression\n", '-'x35, "\n";
 run(\%decompress);
 
 sub run {
