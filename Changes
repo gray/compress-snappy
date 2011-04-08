@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.08  Fri Apr  8 06:48:16 UTC 2011
+    - Improved benchmark script and added benchmarks to the Pod.
+
 0.07  Tue Apr  5 23:32:35 UTC 2011
     - Improved speed by avoiding an extra string copy.
 
