@@ -7,8 +7,8 @@
 #define NEED_sv_2pvbyte
 #include "ppport.h"
 
-#include "src/csnappy_compress.c";
-#include "src/csnappy_decompress.c";
+#include "src/csnappy_compress.c"
+#include "src/csnappy_decompress.c"
 
 MODULE = Compress::Snappy    PACKAGE = Compress::Snappy
 
