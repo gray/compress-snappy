@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.09  Sun Apr 10 21:06:04 UTC 2011
+    - Integrated latest csnappy source for PPC and Windows fixes.
+
 0.08  Fri Apr  8 06:48:16 UTC 2011
     - Improved benchmark script and added benchmarks to the Pod.
 
