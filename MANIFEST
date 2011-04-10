@@ -10,6 +10,7 @@ src/csnappy.h
 src/csnappy_compress.c
 src/csnappy_decompress.c
 src/csnappy_internal.h
+src/csnappy_internal_userspace.h
 t/00_compile.t
 t/01_snappy.t
 xt/kwalitee.t

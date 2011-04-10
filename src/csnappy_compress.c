@@ -33,16 +33,12 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
-
 #ifdef __KERNEL__
 #include <linux/kernel.h>
-#include <linux/string.h>
 #include <linux/module.h>
 #include "linux/csnappy.h"
 #else
 #include "csnappy.h"
-#include <stdlib.h>
-#include <string.h>
 #endif
 
 
@@ -62,10 +58,10 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 
 static inline int FindLSBSetNonZero(uint32_t n)
 {
-	int rc = 31;
-	int i, shift;
+	int rc = 31, i, shift;
+	uint32_t x;
 	for (i = 4, shift = 1 << 4; i >= 0; --i) {
-		const uint32_t x = n << shift;
+		x = n << shift;
 		if (x != 0) {
 			n = x;
 			rc -= shift;
@@ -91,7 +87,7 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 
 
 static inline char*
-Varint__Encode32(char *sptr, uint32_t v)
+encode_varint32(char *sptr, uint32_t v)
 {
 	uint8_t* ptr = (uint8_t*)sptr;
 	static const int B = 128;
@@ -129,12 +125,12 @@ Varint__Encode32(char *sptr, uint32_t v)
  */
 static inline uint32_t HashBytes(uint32_t bytes, int shift)
 {
-  uint32_t kMul = 0x1e35a7bd;
-  return (bytes * kMul) >> shift;
+	uint32_t kMul = 0x1e35a7bd;
+	return (bytes * kMul) >> shift;
 }
 static inline uint32_t Hash(const char *p, int shift)
 {
-  return HashBytes(UNALIGNED_LOAD32(p), shift);
+	return HashBytes(UNALIGNED_LOAD32(p), shift);
 }
 
 
@@ -206,37 +202,39 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	}
 	return matched;
 }
-#else
+#else /* !defined(__x86_64__) */
 static inline int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
 	/* Implementation based on the x86-64 version, above. */
-	DCHECK_GE(s2_limit, s2);
 	int matched = 0;
+	DCHECK_GE(s2_limit, s2);
 
 	while (s2 <= s2_limit - 4 &&
 		UNALIGNED_LOAD32(s2) == UNALIGNED_LOAD32(s1 + matched)) {
 		s2 += 4;
 		matched += 4;
 	}
-#ifdef __LITTLE_ENDIAN
+#if defined(__LITTLE_ENDIAN)
 	if (s2 <= s2_limit - 4) {
 		uint32_t x = UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
 		int matching_bits = FindLSBSetNonZero(x);
 		matched += matching_bits >> 3;
 	} else {
-#else
 		while ((s2 < s2_limit) && (s1[matched] == *s2)) {
 			++s2;
 			++matched;
 		}
-#endif
-#ifdef __LITTLE_ENDIAN
+	}
+#else
+	while ((s2 < s2_limit) && (s1[matched] == *s2)) {
+		++s2;
+		++matched;
 	}
 #endif
 	return matched;
 }
-#endif
+#endif /* !defined(__x86_64__) */
 
 
 static inline char*
@@ -428,7 +426,7 @@ snappy_compress_fragment(
 	* bytes [next_emit, ip) are unmatched. Emit them as "literal bytes."
 	*/
 	DCHECK_LE(next_emit + 16, ip_end);
-	op = EmitLiteral(op, next_emit, ip - next_emit, TRUE);
+	op = EmitLiteral(op, next_emit, ip - next_emit, 1);
 
 	/*
 	* Step 3: Call EmitCopy, and then see if another EmitCopy could
@@ -472,7 +470,7 @@ snappy_compress_fragment(
 	emit_remainder:
 	/* Emit the remaining bytes as a literal */
 	if (next_emit < ip_end)
-		op = EmitLiteral(op, next_emit, ip_end - next_emit, FALSE);
+		op = EmitLiteral(op, next_emit, ip_end - next_emit, 0);
 
 	return op;
 }
@@ -489,13 +487,6 @@ snappy_max_compressed_length(uint32_t source_len)
 EXPORT_SYMBOL(snappy_max_compressed_length);
 #endif
 
-
-static inline int MIN_int(int a, int b)
-{
-	if (a > b) return b;
-	else return a;
-}
-
 void
 snappy_compress(
 	const char *input,
@@ -508,11 +499,11 @@ snappy_compress(
 	int workmem_size;
 	int num_to_read;
 	uint32_t written = 0;
-	char *p = Varint__Encode32(compressed, input_length);
+	char *p = encode_varint32(compressed, input_length);
 	written += (p - compressed);
 	compressed = p;
 	while (input_length > 0) {
-		num_to_read = MIN_int(input_length, kBlockSize);
+		num_to_read = min(input_length, (uint32_t)kBlockSize);
 		workmem_size = workmem_bytes_power_of_two;
 		if (num_to_read < kBlockSize) {
 			for (workmem_size = 9;
