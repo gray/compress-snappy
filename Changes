@@ -1,5 +1,11 @@
 Revision history for Compress-Snappy
 
+0.10  Mon Apr 11 19:11:08 UTC 2011
+    - Promoted last development version to stable as it now works on Linux.
+
+0.09_1  Mon Apr 11 17:26:50 UTC 2011
+    - Integrated latest csnappy source to try to track down Linux failure.
+
 0.09  Sun Apr 10 21:06:04 UTC 2011
     - Integrated latest csnappy source for PPC and Windows fixes.
 
