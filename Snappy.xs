@@ -27,13 +27,13 @@ CODE:
     if (! SvOK(sv)) XSRETURN_NO;
     str = SvPVbyte(sv, len);
     if (! len) XSRETURN_NO;
-    max_compressed_len = snappy_max_compressed_length(len);
+    max_compressed_len = csnappy_max_compressed_length(len);
     RETVAL = newSV(max_compressed_len);
     if (! RETVAL) XSRETURN_UNDEF;
-    Newx(working_memory, SNAPPY_WORKMEM_BYTES, void);
+    Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void);
     if (! working_memory) XSRETURN_UNDEF;
-    snappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
-                    working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+    csnappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
+                    working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
     SvCUR_set(RETVAL, compressed_len);
     SvPOK_on(RETVAL);
@@ -54,11 +54,11 @@ CODE:
     if (! SvOK(sv)) XSRETURN_NO;
     str = SvPVbyte(sv, len);
     if (! len) XSRETURN_NO;
-    if (snappy_get_uncompressed_length(str, len, &decompressed_len))
+    if (csnappy_get_uncompressed_length(str, len, &decompressed_len))
         XSRETURN_UNDEF;
     RETVAL = newSV(decompressed_len);
     if (! RETVAL) XSRETURN_UNDEF;
-    if (snappy_decompress(str, len, SvPVX(RETVAL), decompressed_len))
+    if (csnappy_decompress(str, len, SvPVX(RETVAL), decompressed_len))
         XSRETURN_UNDEF;
     SvCUR_set(RETVAL, decompressed_len);
     SvPOK_on(RETVAL);

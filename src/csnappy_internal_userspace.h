@@ -33,8 +33,8 @@ File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
-#ifndef SNAPPY_INTERNAL_USERSPACE_H_
-#define SNAPPY_INTERNAL_USERSPACE_H_
+#ifndef CSNAPPY_INTERNAL_USERSPACE_H_
+#define CSNAPPY_INTERNAL_USERSPACE_H_
 
 #if defined(_MSC_VER) && (_MSC_VER <= 1300)
 typedef unsigned __int8  uint8_t;
@@ -48,11 +48,15 @@ typedef unsigned __int64 uint64_t;
 #endif
 #include <string.h>
 
+#ifdef _GNU_SOURCE
 #define min(x, y) (__extension__ ({		\
 	typeof(x) _min1 = (x);			\
 	typeof(y) _min2 = (y);			\
 	(void) (&_min1 == &_min2);		\
 	_min1 < _min2 ? _min1 : _min2; }))
+#else
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#endif
 
 /* Static prediction hints. */
 #define likely(x)	__builtin_expect(!!(x), 1)
@@ -106,16 +110,21 @@ typedef unsigned __int64 uint64_t;
 #include <byteswap.h>
 #endif
 
-static inline uint16_t cpu_to_le16(uint32_t v) { return bswap_16(v); }
-static inline uint16_t le16_to_cpu(uint16_t v) { return bswap_16(v); }
-static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
-static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
+static inline uint32_t get_unaligned_le32(const void *p)
+{
+	return bswap_32(UNALIGNED_LOAD32(p));
+}
+
+static inline void put_unaligned_le16(uint16_t val, void *p)
+{
+	uint8_t *pp = (uint8_t*)p;
+	*pp++ = val;
+	*pp++ = val >> 8;
+}
 
 #else /* !defined(__BIG_ENDIAN) */
-#define cpu_to_le16(x) (x)
-#define le16_to_cpu(x) (x)
-#define cpu_to_le32(x) (x)
-#define le32_to_cpu(x) (x)
+#define get_unaligned_le32(p)		(*(const uint32_t*)(p))
+#define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
 #endif /* !defined(__BIG_ENDIAN) */
 
 
@@ -174,4 +183,4 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 
 #endif /* !(x86 || powerpc) */
 
-#endif  /* SNAPPY_INTERNAL_USERSPACE_H_ */
+#endif  /* CSNAPPY_INTERNAL_USERSPACE_H_ */

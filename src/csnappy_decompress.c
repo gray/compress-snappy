@@ -184,7 +184,7 @@ SAW__Append(struct SnappyArrayWriter *this,
 		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
 	} else {
 		if (space_left < len)
-			return SNAPPY_E_OUTPUT_OVERRUN;
+			return CSNAPPY_E_OUTPUT_OVERRUN;
 		memcpy(op, ip, len);
 	}
 	this->op = op + len;
@@ -199,7 +199,7 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 	const int space_left = this->op_limit - op;
 	/* -1u catches offset==0 */
 	if (op - this->base <= offset - 1u)
-		return SNAPPY_E_DATA_MALFORMED;
+		return CSNAPPY_E_DATA_MALFORMED;
 	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
 	if (len <= 16 && offset >= 8 && space_left >= 16) {
 		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(op - offset));
@@ -208,108 +208,13 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		IncrementalCopyFastPath(op - offset, op, len);
 	} else {
 		if (space_left < len)
-			return SNAPPY_E_OUTPUT_OVERRUN;
+			return CSNAPPY_E_OUTPUT_OVERRUN;
 		IncrementalCopy(op - offset, op, len);
 	}
 	this->op = op + len;
 	return 1;
 }
 
-
-/* Helper class for decompression */
-struct SnappyDecompressor {
-	const char	*src;
-	uint32_t	src_bytes_left;
-	const char	*ip;		/* Points to next buffered byte */
-	const char	*ip_limit;	/* Points just past buffered bytes */
-	uint32_t	peeked;		/* Bytes peeked from reader (need to skip) */
-	int		eof;		/* Hit end of input without an error? */
-	char		scratch[5];	/* Temporary buffer for PeekFast() boundaries */
-};
-
-static inline void
-SD__init(struct SnappyDecompressor *this, const char *source, uint32_t src_len)
-{
-	this->src = source;
-	this->src_bytes_left = src_len;
-	this->ip = NULL;
-	this->ip_limit = NULL;
-	this->peeked = 0;
-	this->eof = 0;
-}
-
-/*
- * Ensure that all of the tag metadata for the next tag is available
- * in [ip_..ip_limit_-1].  Also ensures that [ip,ip+4] is readable even
- * if (ip_limit_ - ip_ < 5).
- *
- * Returns 1 on success.
- */
-static int
-SD__RefillTag(struct SnappyDecompressor *this)
-{
-	const char* ip = this->ip;
-	uint32_t needed, nbuf, to_add;
-	if (ip == this->ip_limit) {
-		/* Fetch a new fragment from the reader */
-		/* All peeked bytes are used up */
-		this->src += this->peeked;
-		this->src_bytes_left -= this->peeked;
-		ip = this->src;
-		this->peeked = this->src_bytes_left;
-		if (this->src_bytes_left == 0) {
-			this->eof = 1;
-			return SNAPPY_E_OK;
-		}
-		this->ip_limit = ip + this->src_bytes_left;
-	}
-
-	/* Read the tag character */
-	DCHECK_LT(ip, this->ip_limit);
-	/* +1 byte for current byte at ip */
-	needed = (char_table[*(const uint8_t*)ip] >> 11) + 1;
-	DCHECK_LE(needed, sizeof(this->scratch));
-
-	/* Read more bytes from reader if needed */
-	nbuf = this->ip_limit - ip;
-	if (nbuf < needed) {
-		/* Stitch together bytes from ip and reader to form the word
-		   contents. We store the needed bytes in "scratch_". They
-		   will be consumed immediately by the caller since we do not
-		   read more than we need. */
-		memmove(this->scratch, ip, nbuf);
-		/* All peeked bytes are used up */
-		this->src += this->peeked;
-		this->src_bytes_left -= this->peeked;
-		this->peeked = 0;
-		while (nbuf < needed) {
-			if (this->src_bytes_left == 0)
-				return SNAPPY_E_OUTPUT_OVERRUN;
-			to_add = min(needed - nbuf, this->src_bytes_left);
-			memcpy(this->scratch + nbuf, this->src, to_add);
-			nbuf += to_add;
-			this->src += to_add;
-			this->src_bytes_left -= to_add;
-		}
-		DCHECK_EQ(nbuf, needed);
-		this->ip = this->scratch;
-		this->ip_limit = this->scratch + needed;
-	} else if (nbuf < 5) {
-		/* Have enough bytes, but move into scratch_ so that we do not
-		   read past end of input */
-		memmove(this->scratch, ip, nbuf);
-		/* All peeked bytes are used up */
-		this->src += this->peeked;
-		this->src_bytes_left -= this->peeked;
-		this->peeked = 0;
-		this->ip = this->scratch;
-		this->ip_limit = this->scratch + nbuf;
-	} else {
-		/* Pass pointer to buffer returned by reader_. */
-		this->ip = ip;
-	}
-	return 1;
-}
 
 /*
  * Read the uncompressed length stored at the start of the compressed data.
@@ -326,9 +231,9 @@ ReadUncompressedLength(const char **srcp, uint32_t *src_len, uint32_t *result)
 	*result = 0;
 	for(;;) {
 		if (shift >= 32)
-			return SNAPPY_E_HEADER_BAD;
+			return CSNAPPY_E_HEADER_BAD;
 		if (*src_len == 0)
-			return SNAPPY_E_HEADER_BAD;
+			return CSNAPPY_E_HEADER_BAD;
 		c = *(const uint8_t*)src;
 		src += 1;
 		*src_len -= 1;
@@ -338,112 +243,83 @@ ReadUncompressedLength(const char **srcp, uint32_t *src_len, uint32_t *result)
 		shift += 7;
 	}
 	*srcp = src;
-	return SNAPPY_E_OK;
-}
-
-/*
- * Process the next item found in the input.
- * Returns 1 if more data is pending.
- */
-static inline int
-SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
-{
-	uint8_t c;
-	uint32_t entry, trailer, length, literal_length, avail;
-	int ret, allow_fast_path;
-	const char* ip = this->ip;
-	if (this->ip_limit - ip < 5) {
-		if ((ret = SD__RefillTag(this)) != 1)
-			return ret;
-		ip = this->ip;
-	}
-
-	c = *(const uint8_t*)(ip++);
-	entry = char_table[c];
-	trailer = le32_to_cpu(UNALIGNED_LOAD32(ip)) &
-				wordmask[entry >> 11];
-	ip += entry >> 11;
-	length = entry & 0xff;
-
-	if ((c & 0x3) != LITERAL) {
-		this->ip = ip;
-		/* copy_offset/256 is encoded in bits 8..10.  By just fetching
-		   those bits, we get copy_offset (since the bit-field starts at
-		   bit 8). */
-		return SAW__AppendFromSelf(writer, (entry & 0x700) + trailer, length);
-	}
-
-	literal_length = length + trailer;
-	avail = this->ip_limit - ip;
-	while (avail < literal_length) {
-		allow_fast_path = (avail >= 16);
-		if ((ret = SAW__Append(writer, ip, avail, allow_fast_path)) != 1)
-			return ret;
-		literal_length -= avail;
-		this->src += this->peeked;
-		this->src_bytes_left -= this->peeked;
-		ip = this->src;
-		avail = this->src_bytes_left;
-		this->peeked = avail;
-		if (avail == 0)
-			return SNAPPY_E_INPUT_NOT_CONSUMED;
-		this->ip_limit = ip + avail;
-	}
-	this->ip = ip + literal_length;
-	allow_fast_path = (avail >= 16);
-	return SAW__Append(writer, ip, literal_length, allow_fast_path);
+	return CSNAPPY_E_OK;
 }
 
 
 int
-snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
+csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
 {
 	return ReadUncompressedLength(&start, &n, result);
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_get_uncompressed_length);
+EXPORT_SYMBOL(csnappy_get_uncompressed_length);
 #endif
 
 int
-snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len)
+csnappy_decompress_noheader(
+	const char	*src,
+	uint32_t	src_remaining,
+	char		*dst,
+	uint32_t	*dst_len)
 {
 	struct SnappyArrayWriter writer;
-	struct SnappyDecompressor decomp;
+	uint32_t length, trailer, opword, extra_bytes;
 	int ret;
+	uint8_t opcode;
+	char scratch[5];
 	writer.op = writer.base = dst;
 	writer.op_limit = writer.op + *dst_len;
-	SD__init(&decomp, src, src_len);
-	/* Process the entire input */
-	while ((ret = SD__Step(&decomp, &writer)) == 1) { }
-	if (ret != SNAPPY_E_OK)
-		return ret;
-	if (decomp.eof != 1)
-		return SNAPPY_E_INPUT_NOT_CONSUMED;
-	if (writer.op > writer.op_limit)
-		return SNAPPY_E_OUTPUT_OVERRUN;
+	while (src_remaining) {
+		if (unlikely(src_remaining < 5)) {
+			memcpy(scratch, src, src_remaining);
+			src = scratch;
+		}
+		opcode = *(const uint8_t*)src++;
+		opword = char_table[opcode];
+		extra_bytes = opword >> 11;
+		trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
+		src += extra_bytes;
+		src_remaining -= 1 + extra_bytes;
+		length = opword & 0xff;
+		if (opcode & 0x3) {
+			trailer += opword & 0x700;
+			ret = SAW__AppendFromSelf(&writer, trailer, length);
+			if (ret < 0) return ret;
+		} else {
+			length += trailer;
+			if (unlikely(src_remaining < length))
+				return CSNAPPY_E_DATA_MALFORMED;
+			ret = src_remaining >= 16;
+			ret = SAW__Append(&writer, src, length, ret);
+			if (ret < 0) return ret;
+			src += length;
+			src_remaining -= length;
+		}
+	}
 	*dst_len = writer.op - writer.base;
-	return SNAPPY_E_OK;
+	return CSNAPPY_E_OK;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_decompress_noheader);
+EXPORT_SYMBOL(csnappy_decompress_noheader);
 #endif
 
 int
-snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len)
+csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len)
 {
 	int ret;
 	uint32_t olen = 0;
 	/* Read the uncompressed length from the front of the compressed input */
 	ret = ReadUncompressedLength(&src, &src_len, &olen);
-	if (unlikely(ret != SNAPPY_E_OK))
+	if (unlikely(ret != CSNAPPY_E_OK))
 		return ret;
 	/* Protect against possible DoS attack */
 	if (unlikely(olen > dst_len))
-		return SNAPPY_E_OUTPUT_INSUF;
-	return snappy_decompress_noheader(src, src_len, dst, &olen);
+		return CSNAPPY_E_OUTPUT_INSUF;
+	return csnappy_decompress_noheader(src, src_len, dst, &olen);
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_decompress);
+EXPORT_SYMBOL(csnappy_decompress);
 
 MODULE_LICENSE("BSD");
 MODULE_DESCRIPTION("Snappy Decompressor");
