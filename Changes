@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.10_1  Thu Apr 14 02:41:16 UTC 2011
+    - Added possible fix for Cygwin.
+
 0.10  Mon Apr 11 19:11:08 UTC 2011
     - Promoted last development version to stable as it now works on Linux.
 
