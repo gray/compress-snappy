@@ -73,6 +73,9 @@ typedef unsigned __int64 uint64_t;
 
 /* kernel defined either one or the other, stdlib defines both */
 #if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# ifdef __CYGWIN__
+#  define __BYTE_ORDER BYTE_ORDER
+# endif
 # if defined(__BYTE_ORDER)
 #  if __BYTE_ORDER == 1234
 #   undef __BIG_ENDIAN
