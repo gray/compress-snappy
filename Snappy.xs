@@ -54,7 +54,7 @@ CODE:
     if (! SvOK(sv)) XSRETURN_NO;
     str = SvPVbyte(sv, len);
     if (! len) XSRETURN_NO;
-    if (csnappy_get_uncompressed_length(str, len, &decompressed_len))
+    if (0 > csnappy_get_uncompressed_length(str, len, &decompressed_len))
         XSRETURN_UNDEF;
     RETVAL = newSV(decompressed_len);
     if (! RETVAL) XSRETURN_UNDEF;
