@@ -61,7 +61,6 @@ typedef unsigned __int64 uint64_t;
 /* Static prediction hints. */
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
-#define noinline	__attribute__((noinline))
 
 
 #ifdef DEBUG
@@ -73,9 +72,6 @@ typedef unsigned __int64 uint64_t;
 
 /* kernel defined either one or the other, stdlib defines both */
 #if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# ifdef __CYGWIN__
-#  define __BYTE_ORDER BYTE_ORDER
-# endif
 # if defined(__BYTE_ORDER)
 #  if __BYTE_ORDER == 1234
 #   undef __BIG_ENDIAN
@@ -185,5 +181,49 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 }
 
 #endif /* !(x86 || powerpc) */
+
+
+#if defined(HAVE_BUILTIN_CTZ)
+
+static inline int FindLSBSetNonZero(uint32_t n)
+{
+	return __builtin_ctz(n);
+}
+
+static inline int FindLSBSetNonZero64(uint64_t n)
+{
+	return __builtin_ctzll(n);
+}
+
+#else /* Portable versions. */
+
+static inline int FindLSBSetNonZero(uint32_t n)
+{
+	int rc = 31, i, shift;
+	uint32_t x;
+	for (i = 4, shift = 1 << 4; i >= 0; --i) {
+		x = n << shift;
+		if (x != 0) {
+			n = x;
+			rc -= shift;
+		}
+		shift >>= 1;
+	}
+	return rc;
+}
+
+/* FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero(). */
+static inline int FindLSBSetNonZero64(uint64_t n)
+{
+	const uint32_t bottombits = (uint32_t)n;
+	if (bottombits == 0) {
+		/* Bottom bits are zero, so scan in top bits */
+		return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
+	} else {
+		return FindLSBSetNonZero(bottombits);
+	}
+}
+
+#endif /* End portable versions. */
 
 #endif  /* CSNAPPY_INTERNAL_USERSPACE_H_ */

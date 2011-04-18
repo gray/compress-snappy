@@ -36,60 +36,14 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include "linux/csnappy.h"
-#else
-#include "csnappy.h"
 #endif
-
-
-#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__)
-
-static inline int FindLSBSetNonZero(uint32_t n)
-{
-	return __builtin_ctz(n);
-}
-
-static inline int FindLSBSetNonZero64(uint64_t n)
-{
-	return __builtin_ctzll(n);
-}
-
-#else /* Portable versions. */
-
-static inline int FindLSBSetNonZero(uint32_t n)
-{
-	int rc = 31, i, shift;
-	uint32_t x;
-	for (i = 4, shift = 1 << 4; i >= 0; --i) {
-		x = n << shift;
-		if (x != 0) {
-			n = x;
-			rc -= shift;
-		}
-		shift >>= 1;
-	}
-	return rc;
-}
-
-/* FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero(). */
-static inline int FindLSBSetNonZero64(uint64_t n)
-{
-	const uint32_t bottombits = (uint32_t)n;
-	if (bottombits == 0) {
-		/* Bottom bits are zero, so scan in top bits */
-		return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
-	} else {
-		return FindLSBSetNonZero(bottombits);
-	}
-}
-
-#endif /* End portable versions. */
+#include "csnappy.h"
 
 
 static inline char*
 encode_varint32(char *sptr, uint32_t v)
 {
-	uint8_t* ptr = (uint8_t*)sptr;
+	uint8_t* ptr = (uint8_t *)sptr;
 	static const int B = 128;
 	if (v < (1<<7)) {
 		*(ptr++) = v;
@@ -112,7 +66,7 @@ encode_varint32(char *sptr, uint32_t v)
 		*(ptr++) = (v>>21) | B;
 		*(ptr++) = v>>28;
 	}
-	return (char*)ptr;
+	return (char *)ptr;
 }
 
 
@@ -176,17 +130,20 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	 * length of the match.
 	 */
 	while (likely(s2 <= s2_limit - 8)) {
-		if (unlikely(UNALIGNED_LOAD64(s2) == UNALIGNED_LOAD64(s1 + matched))) {
+		if (unlikely(UNALIGNED_LOAD64(s1 + matched) ==
+				UNALIGNED_LOAD64(s2))) {
 			s2 += 8;
 			matched += 8;
 		} else {
 			/*
-			 * On current (mid-2008) Opteron models there is a 3% more
-			 * efficient code sequence to find the first non-matching byte.
-			 * However, what follows is ~10% better on Intel Core 2 and newer,
-			 * and we expect AMD's bsf instruction to improve.
+			 * On current (mid-2008) Opteron models there is a 3%
+			 * more efficient code sequence to find the first
+			 * non-matching byte. However, what follows is ~10%
+			 * better on Intel Core 2 and newer, and we expect AMD's
+			 * bsf instruction to improve.
 			 */
-			x = UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 + matched);
+			x = UNALIGNED_LOAD64(s1 + matched) ^
+				UNALIGNED_LOAD64(s2);
 			matching_bits = FindLSBSetNonZero64(x);
 			matched += matching_bits >> 3;
 			return matched;
@@ -217,7 +174,8 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	}
 #if defined(__LITTLE_ENDIAN)
 	if (s2 <= s2_limit - 4) {
-		uint32_t x = UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
+		uint32_t x = UNALIGNED_LOAD32(s1 + matched) ^
+				UNALIGNED_LOAD32(s2);
 		int matching_bits = FindLSBSetNonZero(x);
 		matched += matching_bits >> 3;
 	} else {
@@ -257,12 +215,13 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 		*/
 		if (allow_fast_path && len <= 16) {
 			UNALIGNED_STORE64(op, UNALIGNED_LOAD64(literal));
-			UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(literal + 8));
+			UNALIGNED_STORE64(op + 8,
+						UNALIGNED_LOAD64(literal + 8));
 			return op + len;
 		}
 	} else {
 		/* Encode in upcoming bytes */
-		char* base = op;
+		char *base = op;
 		int count = 0;
 		op++;
 		while (n > 0) {
@@ -279,7 +238,7 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 }
 
 static inline char*
-EmitCopyLessThan64(char* op, int offset, int len)
+EmitCopyLessThan64(char *op, int offset, int len)
 {
 	DCHECK_LE(len, 64);
 	DCHECK_GE(len, 4);
@@ -288,7 +247,9 @@ EmitCopyLessThan64(char* op, int offset, int len)
 	if ((len < 12) && (offset < 2048)) {
 		int len_minus_4 = len - 4;
 		DCHECK_LT(len_minus_4, 8); /* Must fit in 3 bits */
-		*op++ = COPY_1_BYTE_OFFSET | ((len_minus_4) << 2) | ((offset >> 8) << 5);
+		*op++ = COPY_1_BYTE_OFFSET   |
+			((len_minus_4) << 2) |
+			((offset >> 8) << 5);
 		*op++ = offset & 0xff;
 	} else {
 		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
@@ -299,15 +260,17 @@ EmitCopyLessThan64(char* op, int offset, int len)
 }
 
 static inline char*
-EmitCopy(char* op, int offset, int len)
+EmitCopy(char *op, int offset, int len)
 {
-	/* Emit 64 byte copies but make sure to keep at least four bytes reserved */
+	/* Emit 64 byte copies but make sure to keep at least four bytes
+	 * reserved */
 	while (len >= 68) {
 		op = EmitCopyLessThan64(op, offset, 64);
 		len -= 64;
 	}
 
-	/* Emit an extra 60 byte copy if have too much data to fit in one copy */
+	/* Emit an extra 60 byte copy if have too much data to fit in one
+	 * copy */
 	if (len > 64) {
 		op = EmitCopyLessThan64(op, offset, 60);
 		len -= 60;
@@ -346,14 +309,17 @@ csnappy_compress_fragment(
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
-	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip, *candidate, *base;
-	uint16_t *table = (uint16_t*)working_memory;
+	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip,
+			*candidate, *base;
+	uint16_t *table = (uint16_t *)working_memory;
 	uint64_t input_bytes;
 	uint32_t hash, next_hash, prev_hash, cur_hash, skip, candidate_bytes;
 	int shift, matched;
 
-	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
-	/* Table of 2^X bytes. Need only X-1 bits of 32bit key to address uint16_t. */
+	DCHECK_GE(workmem_bytes_power_of_two, 9);
+	DCHECK_LE(workmem_bytes_power_of_two, 15);
+	/* Table of 2^X bytes, need (X-1) bits to address table of uint16_t.
+	 * How many bits of 32bit hash function result are discarded? */
 	shift = 33 - workmem_bytes_power_of_two;
 	/* "ip" is the input pointer, and "op" is the output pointer. */
 	ip = input;
@@ -372,7 +338,7 @@ csnappy_compress_fragment(
 	ip_limit = input + input_size - kInputMarginBytes;
 	next_hash = Hash(++ip, shift);
 
-	main_loop:
+main_loop:
 	DCHECK_LT(next_emit, ip);
 	/*
 	* The body of this loop calls EmitLiteral once and then EmitCopy one or
@@ -467,7 +433,7 @@ csnappy_compress_fragment(
 	++ip;
 	goto main_loop;
 
-	emit_remainder:
+emit_remainder:
 	/* Emit the remaining bytes as a literal */
 	if (next_emit < ip_end)
 		op = EmitLiteral(op, next_emit, ip_end - next_emit, 0);
