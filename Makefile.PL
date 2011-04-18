@@ -19,7 +19,8 @@ my %conf = (
         },
     },
 
-    DEFINE => pack('L', 1) ne pack('N', 1)
+    CCFLAGS => '-Wall',
+    DEFINE  => pack('L', 1) ne pack('N', 1)
         ? '-D__LITTLE_ENDIAN' : '-D__BIG_ENDIAN',
 
     dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
