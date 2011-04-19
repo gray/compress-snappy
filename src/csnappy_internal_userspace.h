@@ -129,7 +129,7 @@ static inline void put_unaligned_le16(uint16_t val, void *p)
 
 /* Potentially unaligned loads and stores. */
 
-#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || defined(__powerpc64__)
 
 #define UNALIGNED_LOAD16(_p) (*(const uint16_t*)(_p))
 #define UNALIGNED_LOAD32(_p) (*(const uint32_t*)(_p))
