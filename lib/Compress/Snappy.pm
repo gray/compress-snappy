@@ -6,7 +6,7 @@ use parent qw(Exporter);
 
 use XSLoader;
 
-our $VERSION    = '0.11';
+our $VERSION    = '0.11_1';
 our $XS_VERSION = $VERSION;
 $VERSION = eval $VERSION;
 

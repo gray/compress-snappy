@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.11_1  Tue Apr 19 00:22:22 UTC 2011
+    - Added possible fix for PowerPC 64-bit.
+
 0.11  Mon Apr 18 09:41:57 UTC 2011
     - Added proper fix for Cygwin.
 
