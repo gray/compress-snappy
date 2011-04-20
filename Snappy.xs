@@ -16,7 +16,7 @@ PROTOTYPES: ENABLE
 
 SV *
 compress (sv)
-  SV *sv
+    SV *sv
 PREINIT:
     char *str;
     STRLEN len;
@@ -33,7 +33,7 @@ CODE:
     Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void);
     if (! working_memory) XSRETURN_UNDEF;
     csnappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
-                    working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+                     working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
     SvCUR_set(RETVAL, compressed_len);
     SvPOK_on(RETVAL);
@@ -42,7 +42,7 @@ OUTPUT:
 
 SV *
 decompress (sv)
-  SV *sv
+    SV *sv
 ALIAS:
     uncompress = 1
 PREINIT:
