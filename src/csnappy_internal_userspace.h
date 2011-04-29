@@ -70,25 +70,6 @@ typedef unsigned __int64 uint64_t;
 #define DCHECK(cond)
 #endif
 
-/* kernel defined either one or the other, stdlib defines both */
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# if defined(__BYTE_ORDER)
-#  if __BYTE_ORDER == __LITTLE_ENDIAN
-#   undef __BIG_ENDIAN
-#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
-#  elif __BYTE_ORDER == __BIG_ENDIAN
-#   undef __LITTLE_ENDIAN
-#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
-#  endif
-# endif
-#endif
-
-#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
-#endif
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined, not both!
-#endif
 
 /* Potentially unaligned loads and stores. */
 
@@ -146,6 +127,26 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 #endif /* !(x86 || powerpc) */
 
 
+/* kernel defined either one or the other, stdlib defines both */
+#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# if defined(__BYTE_ORDER)
+#  if __BYTE_ORDER == __LITTLE_ENDIAN
+#   undef __BIG_ENDIAN
+#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
+#  elif __BYTE_ORDER == __BIG_ENDIAN
+#   undef __LITTLE_ENDIAN
+#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
+#  endif
+# endif
+#endif
+
+#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
+#endif
+#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined, not both!
+#endif
+
 /* Convert to little-endian storage, opposite of network format. */
 #if defined(__BIG_ENDIAN)
 
@@ -181,6 +182,7 @@ static inline void put_unaligned_le16(uint16_t val, void *p)
 #define get_unaligned_le32(p)		(*(const uint32_t*)(p))
 #define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
 #endif /* !defined(__BIG_ENDIAN) */
+
 
 #if defined(HAVE_BUILTIN_CTZ)
 
