@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.12  Fri Apr 29 05:56:00 UTC 2011
+    - No changes; promoted last development version to stable.
+
 0.11_2  Wed Apr 20 04:23:32 UTC 2011
     - Added possible fix for Darwin PowerPC.
 
