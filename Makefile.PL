@@ -19,7 +19,6 @@ my %conf = (
         },
     },
 
-    CCFLAGS => '-Wall',
     DEFINE  => pack('L', 1) ne pack('N', 1)
         ? '-D__LITTLE_ENDIAN' : '-D__BIG_ENDIAN',
 
