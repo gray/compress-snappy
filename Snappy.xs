@@ -55,6 +55,7 @@ PREINIT:
     STRLEN len;
     uint32_t decompressed_len;
 CODE:
+    PERL_UNUSED_VAR(ix); /* -W */
     if (SvROK(sv))
         sv = SvRV(sv);
     if (! SvOK(sv))
