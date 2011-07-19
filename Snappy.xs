@@ -20,18 +20,23 @@ compress (sv)
 PREINIT:
     char *str;
     STRLEN len;
-    uint32_t max_compressed_len, compressed_len;
+    uint32_t compressed_len;
     void *working_memory;
 CODE:
-    if (SvROK(sv)) sv = SvRV(sv);
-    if (! SvOK(sv)) XSRETURN_NO;
+    if (SvROK(sv))
+        sv = SvRV(sv);
+    if (! SvOK(sv))
+        XSRETURN_NO;
     str = SvPVbyte(sv, len);
-    if (! len) XSRETURN_NO;
-    max_compressed_len = csnappy_max_compressed_length(len);
-    RETVAL = newSV(max_compressed_len);
-    if (! RETVAL) XSRETURN_UNDEF;
+    if (! len)
+        XSRETURN_NO;
+    compressed_len = csnappy_max_compressed_length(len);
+    if (! compressed_len)
+        XSRETURN_UNDEF;
     Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void);
-    if (! working_memory) XSRETURN_UNDEF;
+    if (! working_memory)
+        XSRETURN_UNDEF;
+    RETVAL = newSV(compressed_len);
     csnappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
                      working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
@@ -50,14 +55,18 @@ PREINIT:
     STRLEN len;
     uint32_t decompressed_len;
 CODE:
-    if (SvROK(sv)) sv = SvRV(sv);
-    if (! SvOK(sv)) XSRETURN_NO;
+    if (SvROK(sv))
+        sv = SvRV(sv);
+    if (! SvOK(sv))
+        XSRETURN_NO;
     str = SvPVbyte(sv, len);
-    if (! len) XSRETURN_NO;
+    if (! len)
+        XSRETURN_NO;
     if (0 > csnappy_get_uncompressed_length(str, len, &decompressed_len))
         XSRETURN_UNDEF;
+    if (! decompressed_len)
+        XSRETURN_UNDEF;
     RETVAL = newSV(decompressed_len);
-    if (! RETVAL) XSRETURN_UNDEF;
     if (csnappy_decompress(str, len, SvPVX(RETVAL), decompressed_len))
         XSRETURN_UNDEF;
     SvCUR_set(RETVAL, decompressed_len);
