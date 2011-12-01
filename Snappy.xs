@@ -33,7 +33,7 @@ CODE:
     compressed_len = csnappy_max_compressed_length(len);
     if (! compressed_len)
         XSRETURN_UNDEF;
-    Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void);
+    Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void *);
     if (! working_memory)
         XSRETURN_UNDEF;
     RETVAL = newSV(compressed_len);
