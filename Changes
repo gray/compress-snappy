@@ -1,5 +1,11 @@
 Revision history for Compress-Snappy
 
+0.13  Mon Jan  2 23:55:02 UTC 2012
+    - Removed -Wall compiler flag because it is not portable.
+      It was also overriding CCFLAGS instead of updating it. (RT #73604)
+    - Fixed portability issue with sizeof(void). (RT #72859)
+    - Updated ppport.h.
+
 0.12  Fri Apr 29 05:56:00 UTC 2011
     - No changes; promoted last development version to stable.
 
