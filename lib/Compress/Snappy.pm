@@ -63,7 +63,7 @@ On error (in case of corrupted data) undef is returned.
 
 =head1 PERFORMANCE
 
-This distribution contains a benchmarking script which compares serveral
+This distribution contains a benchmarking script which compares several
 compression modules available on CPAN.  These are the results on a MacBook
 2GHz Core 2 Duo (64-bit) with Perl 5.12.3:
 
