@@ -1,5 +1,10 @@
 Revision history for Compress-Snappy
 
+0.14  Fri Mar  2 04:31:51 UTC 2012
+    - Integrated latest csnappy source for portability fix (RT #72859) and
+      better performance.
+    - Updated benchmarks.
+
 0.13  Mon Jan  2 23:55:02 UTC 2012
     - Removed -Wall compiler flag because it is not portable.
       It was also overriding CCFLAGS instead of updating it. (RT #73604)
