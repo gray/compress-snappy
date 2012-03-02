@@ -65,35 +65,40 @@ On error (in case of corrupted data) undef is returned.
 
 This distribution contains a benchmarking script which compares several
 compression modules available on CPAN.  These are the results on a MacBook
-2GHz Core 2 Duo (64-bit) with Perl 5.12.3:
+2GHz Core 2 Duo (64-bit) with Perl 5.14.2:
 
     Compressible data (10 KiB) - compression
     ----------------------------------------
-    Compress::Snappy::compress  139183/s  1359 MiB/s
-    Compress::LZF::compress      43115/s   421 MiB/s
-    Compress::Bzip2::compress     5332/s    52 MiB/s
-    Compress::Zlib::compress      3054/s    30 MiB/s
+    Compress::LZ4::compress     183794/s  1795 MiB/s  1.152%
+    Compress::Snappy::compress  122496/s  1196 MiB/s  5.332%
+    Compress::LZF::compress      44383/s   433 MiB/s  1.865%
+    Compress::Zlib::compress      2765/s    27 MiB/s  1.201%
+    Compress::Bzip2::compress      110/s     1 MiB/s  2.070%
 
     Compressible data (10 KiB) - decompression
     ------------------------------------------
-    Compress::Snappy::decompress  128478/s  1255 MiB/s
-    Compress::LZF::decompress      37594/s   367 MiB/s
-    Compress::Bzip2::decompress    17596/s   172 MiB/s
-    Compress::Zlib::uncompress      5288/s    52 MiB/s
+    Compress::LZ4::decompress     546133/s  5333 MiB/s
+    Compress::Snappy::decompress  175363/s  1713 MiB/s
+    Compress::LZF::decompress     135244/s  1321 MiB/s
+    Compress::Bzip2::decompress     6352/s    62 MiB/s
+    Compress::Zlib::uncompress      5440/s    53 MiB/s
 
     Uncompressible data (10 KiB) - compression
     ------------------------------------------
-    Compress::Snappy::compress  1485435/s  14506 MiB/s
-    Compress::LZF::compress      594752/s   5808 MiB/s
-    Compress::Bzip2::compress     15360/s    150 MiB/s
-    Compress::Zlib::compress       4479/s     44 MiB/s
+    Compress::LZ4::compress     763738/s  7458 MiB/s  107.463%
+    Compress::Snappy::compress  552269/s  5393 MiB/s  100.000%
+    Compress::LZF::compress     532919/s  5204 MiB/s  101.493%
+    Compress::Bzip2::compress    15424/s   151 MiB/s  185.075%
+    Compress::Zlib::compress      4325/s    42 MiB/s  105.970%
 
     Uncompressible data (10 KiB) - decompression
     --------------------------------------------
-    Compress::LZF::decompress     2858267/s  27913 MiB/s
-    Compress::Snappy::decompress  2502283/s  24436 MiB/s
-    Compress::Bzip2::decompress     53096/s    519 MiB/s
-    Compress::Zlib::uncompress       6637/s     65 MiB/s
+    Compress::LZF::decompress     2583577/s  25230 MiB/s
+    Compress::LZ4::decompress     2383127/s  23273 MiB/s
+    Compress::Snappy::decompress  2068002/s  20195 MiB/s
+    Compress::Bzip2::decompress     48650/s    475 MiB/s
+    Compress::Zlib::uncompress       6342/s     62 MiB/s
+
 
 =head1 SEE ALSO
 
