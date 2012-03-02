@@ -150,12 +150,12 @@ static const int kMaxIncrementCopyOverflow = 10;
 static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
 {
 	while (op - src < 8) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		len -= op - src;
 		op += op - src;
 	}
 	while (len > 0) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		src += 8;
 		op += 8;
 		len -= 8;
@@ -171,20 +171,32 @@ struct SnappyArrayWriter {
 };
 
 static inline int
-SAW__Append(struct SnappyArrayWriter *this,
-	    const char *ip, uint32_t len, int allow_fast_path)
+SAW__AppendFastPath(struct SnappyArrayWriter *this,
+		    const char *ip, uint32_t len)
 {
 	char *op = this->op;
 	const int space_left = this->op_limit - op;
-	/*Fast path, used for the majority (about 90%) of dynamic invocations.*/
-	if (allow_fast_path && len <= 16 && space_left >= 16) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(ip));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
+	if (likely(space_left >= 16)) {
+		UnalignedCopy64(ip, op);
+		UnalignedCopy64(ip + 8, op + 8);
 	} else {
-		if (space_left < len)
+		if (unlikely(space_left < len))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		memcpy(op, ip, len);
 	}
+	this->op = op + len;
+	return CSNAPPY_E_OK;
+}
+
+static inline int
+SAW__Append(struct SnappyArrayWriter *this,
+	    const char *ip, uint32_t len)
+{
+	char *op = this->op;
+	const int space_left = this->op_limit - op;
+	if (unlikely(space_left < len))
+		return CSNAPPY_E_OUTPUT_OVERRUN;
+	memcpy(op, ip, len);
 	this->op = op + len;
 	return CSNAPPY_E_OK;
 }
@@ -200,8 +212,8 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		return CSNAPPY_E_DATA_MALFORMED;
 	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
 	if (len <= 16 && offset >= 8 && space_left >= 16) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(op - offset));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(op - offset + 8));
+		UnalignedCopy64(op - offset, op);
+		UnalignedCopy64(op - offset + 8, op + 8);
 	} else if (space_left >= len + kMaxIncrementCopyOverflow) {
 		IncrementalCopyFastPath(op - offset, op, len);
 	} else {
@@ -253,41 +265,64 @@ csnappy_decompress_noheader(
 	uint32_t	*dst_len)
 {
 	struct SnappyArrayWriter writer;
+	const char *end_minus5 = src + src_remaining - 5;
 	uint32_t length, trailer, opword, extra_bytes;
-	int ret;
+	int ret, available;
 	uint8_t opcode;
 	char scratch[5];
 	writer.op = writer.base = dst;
 	writer.op_limit = writer.op + *dst_len;
-	while (src_remaining) {
-		if (unlikely(src_remaining < 5)) {
-			memcpy(scratch, src, src_remaining);
-			src = scratch;
-		}
+	#define LOOP_COND() \
+	if (unlikely(src >= end_minus5)) {		\
+		available = end_minus5 + 5 - src;	\
+		if (unlikely(available <= 0))		\
+			goto out;			\
+		memmove(scratch, src, available);	\
+		src = scratch;				\
+		end_minus5 = scratch + available - 5;	\
+	}
+	
+	LOOP_COND();
+	for (;;) {
 		opcode = *(const uint8_t *)src++;
-		opword = char_table[opcode];
-		extra_bytes = opword >> 11;
-		trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
-		src += extra_bytes;
-		src_remaining -= 1 + extra_bytes;
-		length = opword & 0xff;
 		if (opcode & 0x3) {
+			opword = char_table[opcode];
+			extra_bytes = opword >> 11;
+			trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
+			length = opword & 0xff;
+			src += extra_bytes;
 			trailer += opword & 0x700;
 			ret = SAW__AppendFromSelf(&writer, trailer, length);
 			if (ret < 0)
 				return ret;
+			LOOP_COND();
 		} else {
-			length += trailer;
-			if (unlikely(src_remaining < length))
+			length = (opcode >> 2) + 1;
+			available = end_minus5 + 5 - src;
+			if (length <= 16 && available >= 16) {
+				if ((ret = SAW__AppendFastPath(&writer, src, length)) < 0)
+					return ret;
+				src += length;
+				LOOP_COND();
+				continue;
+			}
+			if (unlikely(length > 60)) {
+				extra_bytes = length - 60;
+				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
+				src += extra_bytes;
+				available = end_minus5 + 5 - src;
+			}
+			if (unlikely(available < length))
 				return CSNAPPY_E_DATA_MALFORMED;
-			ret = src_remaining >= 16;
-			ret = SAW__Append(&writer, src, length, ret);
+			ret = SAW__Append(&writer, src, length);
 			if (ret < 0)
 				return ret;
 			src += length;
-			src_remaining -= length;
+			LOOP_COND();
 		}
 	}
+#undef LOOP_COND
+out:
 	*dst_len = writer.op - writer.base;
 	return CSNAPPY_E_OK;
 }
