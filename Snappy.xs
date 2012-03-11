@@ -18,29 +18,32 @@ SV *
 compress (sv)
     SV *sv
 PREINIT:
-    char *str;
-    STRLEN len;
-    uint32_t compressed_len;
+    char *src, *dest;
+    STRLEN src_len;
+    uint32_t dest_len;
     void *working_memory;
 CODE:
     if (SvROK(sv))
         sv = SvRV(sv);
     if (! SvOK(sv))
         XSRETURN_NO;
-    str = SvPVbyte(sv, len);
-    if (! len)
+    src = SvPVbyte(sv, src_len);
+    if (! src_len)
         XSRETURN_NO;
-    compressed_len = csnappy_max_compressed_length(len);
-    if (! compressed_len)
+    dest_len = csnappy_max_compressed_length(src_len);
+    if (! dest_len)
         XSRETURN_UNDEF;
     Newx(working_memory, CSNAPPY_WORKMEM_BYTES, void *);
     if (! working_memory)
         XSRETURN_UNDEF;
-    RETVAL = newSV(compressed_len);
-    csnappy_compress(str, len, SvPVX(RETVAL), &compressed_len,
-                     working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+    RETVAL = newSV(dest_len);
+    dest = SvPVX(RETVAL);
+    if (! dest)
+        XSRETURN_UNDEF;
+    csnappy_compress(src, src_len, dest, &dest_len, working_memory,
+                     CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
     Safefree(working_memory);
-    SvCUR_set(RETVAL, compressed_len);
+    SvCUR_set(RETVAL, dest_len);
     SvPOK_on(RETVAL);
 OUTPUT:
     RETVAL
@@ -51,26 +54,30 @@ decompress (sv)
 ALIAS:
     uncompress = 1
 PREINIT:
-    char *str;
-    STRLEN len;
-    uint32_t decompressed_len;
+    char *src, *dest;
+    STRLEN src_len;
+    uint32_t dest_len;
+    int header_len;
 CODE:
     PERL_UNUSED_VAR(ix); /* -W */
     if (SvROK(sv))
         sv = SvRV(sv);
     if (! SvOK(sv))
         XSRETURN_NO;
-    str = SvPVbyte(sv, len);
-    if (! len)
+    src = SvPVbyte(sv, src_len);
+    if (! src_len)
         XSRETURN_NO;
-    if (0 > csnappy_get_uncompressed_length(str, len, &decompressed_len))
+    header_len = csnappy_get_uncompressed_length(src, src_len, &dest_len);
+    if (0 > header_len || ! dest_len)
         XSRETURN_UNDEF;
-    if (! decompressed_len)
+    RETVAL = newSV(dest_len);
+    dest = SvPVX(RETVAL);
+    if (! dest)
         XSRETURN_UNDEF;
-    RETVAL = newSV(decompressed_len);
-    if (csnappy_decompress(str, len, SvPVX(RETVAL), decompressed_len))
+    if (csnappy_decompress_noheader(src + header_len, src_len - header_len,
+                                    dest, &dest_len))
         XSRETURN_UNDEF;
-    SvCUR_set(RETVAL, decompressed_len);
+    SvCUR_set(RETVAL, dest_len);
     SvPOK_on(RETVAL);
 OUTPUT:
     RETVAL
