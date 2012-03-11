@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.15  Sun Mar 11 21:32:16 UTC 2012
+    - Optimized decompress function to stop decoding the stream header twice.
+
 0.14  Fri Mar  2 04:31:51 UTC 2012
     - Integrated latest csnappy source for portability fix (RT #72859) and
       better performance.
