@@ -1,5 +1,9 @@
 Revision history for Compress-Snappy
 
+0.16  Wed Mar 14 02:08:35 UTC 2012
+    - Added test for __builtin_ctz for improved performance.
+    - Integrated latest csnappy source.
+
 0.15  Sun Mar 11 21:32:16 UTC 2012
     - Optimized decompress function to stop decoding the stream header twice.
 
