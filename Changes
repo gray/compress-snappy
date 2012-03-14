@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.17  Wed Mar 14 21:38:13 UTC 2012
+    - Integrated latest csnappy source for portability fixes.
+
 0.16  Wed Mar 14 02:08:35 UTC 2012
     - Added test for __builtin_ctz for improved performance.
     - Integrated latest csnappy source.
