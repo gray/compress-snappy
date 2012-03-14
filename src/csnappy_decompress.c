@@ -39,12 +39,99 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 #include "csnappy.h"
 
+int
+csnappy_get_uncompressed_length(
+	const char *src,
+	uint32_t src_len,
+	uint32_t *result)
+{
+	const char *src_base = src;
+	uint32_t shift = 0;
+	uint8_t c;
+	/* Length is encoded in 1..5 bytes */
+	*result = 0;
+	for (;;) {
+		if (shift >= 32)
+			goto err_out;
+		if (src_len == 0)
+			goto err_out;
+		c = *(const uint8_t *)src++;
+		src_len -= 1;
+		*result |= (uint32_t)(c & 0x7f) << shift;
+		if (c < 128)
+			break;
+		shift += 7;
+	}
+	return src - src_base;
+err_out:
+	return CSNAPPY_E_HEADER_BAD;
+}
+#if defined(__KERNEL__) && !defined(STATIC)
+EXPORT_SYMBOL(csnappy_get_uncompressed_length);
+#endif
 
-/* Mapping from i in range [0,4] to a mask to extract the bottom 8*i bits */
-static const uint32_t wordmask[] = {
-	0u, 0xffu, 0xffffu, 0xffffffu, 0xffffffffu
-};
-
+#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
+int csnappy_decompress_noheader(
+	const char	*src_,
+	uint32_t	src_remaining,
+	char		*dst,
+	uint32_t	*dst_len)
+{
+	const uint8_t * src = (const uint8_t *)src_;
+	const uint8_t * const src_end = src + src_remaining;
+	char * const dst_base = dst;
+	char * const dst_end = dst + *dst_len;
+	while (src < src_end) {
+		uint32_t opcode = *src++;
+		uint32_t length = (opcode >> 2) + 1;
+		const uint8_t *copy_src;
+		if (likely((opcode & 3) == 0)) {
+			if (unlikely(length > 60)) {
+				uint32_t extra_bytes = length - 60;
+				if (unlikely(src + extra_bytes > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = 0;
+				for (int shift = 0, max_shift = extra_bytes*8;
+					shift < max_shift;
+					shift += 8)
+					length |= *src++ << shift;
+				++length;
+			}
+			if (unlikely(src + length > src_end))
+				return CSNAPPY_E_DATA_MALFORMED;
+			copy_src = src;
+			src += length;
+		} else {
+			uint32_t offset;
+			if (likely((opcode & 3) == 1)) {
+				if (unlikely(src + 1 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = ((length - 1) & 7) + 4;
+				offset = ((opcode >> 5) << 8) + *src++;
+			} else if (likely((opcode & 3) == 2)) {
+				if (unlikely(src + 2 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8);
+				src += 2;
+			} else {
+				if (unlikely(src + 4 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8) |
+					 (src[2] << 16) | (src[3] << 24);
+				src += 4;
+			}
+			if (unlikely(!offset || (offset > dst - dst_base)))
+				return CSNAPPY_E_DATA_MALFORMED;
+			copy_src = (const uint8_t *)dst - offset;
+		}
+		if (unlikely(dst + length > dst_end))
+			return CSNAPPY_E_OUTPUT_OVERRUN;
+		do *dst++ = *copy_src++; while (--length);
+	}
+	*dst_len = dst - dst_base;
+	return CSNAPPY_E_OK;
+}
+#else /* !(arm with no unaligned access) */
 /*
  * Data stored per entry in lookup table:
  *      Range   Bits-used       Description
@@ -225,38 +312,6 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 	return CSNAPPY_E_OK;
 }
 
-
-int
-csnappy_get_uncompressed_length(
-	const char *src,
-	uint32_t src_len,
-	uint32_t *result)
-{
-	const char *src_base = src;
-	uint32_t shift = 0;
-	uint8_t c;
-	/* Length is encoded in 1..5 bytes */
-	*result = 0;
-	for (;;) {
-		if (shift >= 32)
-			goto err_out;
-		if (src_len == 0)
-			goto err_out;
-		c = *(const uint8_t *)src++;
-		src_len -= 1;
-		*result |= (uint32_t)(c & 0x7f) << shift;
-		if (c < 128)
-			break;
-		shift += 7;
-	}
-	return src - src_base;
-err_out:
-	return CSNAPPY_E_HEADER_BAD;
-}
-#if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(csnappy_get_uncompressed_length);
-#endif
-
 int
 csnappy_decompress_noheader(
 	const char	*src,
@@ -288,7 +343,7 @@ csnappy_decompress_noheader(
 		if (opcode & 0x3) {
 			opword = char_table[opcode];
 			extra_bytes = opword >> 11;
-			trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
+			trailer = get_unaligned_le(src, extra_bytes);
 			length = opword & 0xff;
 			src += extra_bytes;
 			trailer += opword & 0x700;
@@ -308,7 +363,7 @@ csnappy_decompress_noheader(
 			}
 			if (unlikely(length > 60)) {
 				extra_bytes = length - 60;
-				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
+				length = get_unaligned_le(src, extra_bytes) + 1;
 				src += extra_bytes;
 				available = end_minus5 + 5 - src;
 			}
@@ -326,6 +381,8 @@ out:
 	*dst_len = writer.op - writer.base;
 	return CSNAPPY_E_OK;
 }
+#endif /* optimized for unaligned arch */
+
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(csnappy_decompress_noheader);
 #endif
