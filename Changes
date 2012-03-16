@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.18  Fri Mar 16 20:46:00 UTC 2012
+    - Integrated latest csnappy source for ARMv5 fixes.
+
 0.17  Wed Mar 14 21:38:13 UTC 2012
     - Integrated latest csnappy source for portability fixes.
 
