@@ -27,7 +27,7 @@ my %conf = (
         },
     },
 
-    DEFINE  => $ctz,
+    DEFINE => $ctz,
 
     dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean  => { FILES    => 'Compress-Snappy-*' },
