@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.19  Sat Sep  8 17:56:50 UTC 2012
+    - Allowed overloaded objects to be stringified.
+
 0.18  Fri Mar 16 20:46:00 UTC 2012
     - Integrated latest csnappy source for ARMv5 fixes.
 
