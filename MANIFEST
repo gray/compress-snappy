@@ -8,6 +8,7 @@ ppport.h
 README
 Snappy.xs
 src/csnappy.h
+src/csnappy_compat.h
 src/csnappy_compress.c
 src/csnappy_decompress.c
 src/csnappy_internal.h
