@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.20  Mon Apr  1 04:03:58 UTC 2013
+    - Integrated latest csnappy source for windows fix. (RT #83778)
+
 0.19  Sat Sep  8 17:56:50 UTC 2012
     - Allowed overloaded objects to be stringified.
 
