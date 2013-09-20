@@ -4,11 +4,11 @@
 /*
 ----------------------------------------------------------------------
 
-    ppport.h -- Perl/Pollution/Portability Version 3.20
+    ppport.h -- Perl/Pollution/Portability Version 3.21
 
-    Automatically created by Devel::PPPort running under perl 5.014002.
+    Automatically created by Devel::PPPort running under perl 5.018000.
 
-    Version 3.x, Copyright (c) 2004-2010, Marcus Holland-Moritz.
+    Version 3.x, Copyright (c) 2004-2013, Marcus Holland-Moritz.
 
     Version 2.x, Copyright (C) 2001, Paul Marquess.
 
@@ -23,8 +23,8 @@ SKIP
 if (@ARGV && $ARGV[0] eq '--unstrip') {
   eval { require Devel::PPPort };
   $@ and die "Cannot require Devel::PPPort, please install.\n";
-  if (eval $Devel::PPPort::VERSION < 3.2) {
-    die "ppport.h was originally generated with Devel::PPPort 3.2.\n"
+  if (eval $Devel::PPPort::VERSION < 3.21) {
+    die "./ppport.h was originally generated with Devel::PPPort 3.21.\n"
       . "Your Devel::PPPort is only version $Devel::PPPort::VERSION.\n"
       . "Please install a newer version, or --unstrip will not work.\n";
   }
@@ -351,6 +351,9 @@ __DATA__*/
 #ifndef IVSIZE
 #define IVSIZE 8
 #endif
+#ifndef LONGSIZE
+#define LONGSIZE 8
+#endif
 #ifndef PERL_QUAD_MIN
 #define PERL_QUAD_MIN IV_MIN
 #endif
@@ -366,6 +369,9 @@ __DATA__*/
 #else
 #ifndef IVTYPE
 #define IVTYPE long
+#endif
+#ifndef LONGSIZE
+#define LONGSIZE 4
 #endif
 #ifndef IV_MIN
 #define IV_MIN PERL_LONG_MIN
@@ -755,14 +761,19 @@ typedef OP* (CPERLscope(*Perl_check_t)) (pTHX_ OP*);
 #if (PERL_BCDVERSION < 0x5010000)
 #undef isPRINT
 #endif
+#ifdef HAS_QUAD
+#define WIDEST_UTYPE U64TYPE
+#else
+#define WIDEST_UTYPE U32
+#endif
 #ifndef isALNUMC
 #define isALNUMC(c) (isALPHA(c) || isDIGIT(c))
 #endif
 #ifndef isASCII
-#define isASCII(c) ((U8) (c) <= 127)
+#define isASCII(c) ((WIDEST_UTYPE) (c) <= 127)
 #endif
 #ifndef isCNTRL
-#define isCNTRL(c) ((U8) (c) < ' ' || (c) == 127)
+#define isCNTRL(c) ((WIDEST_UTYPE) (c) < ' ' || (c) == 127)
 #endif
 #ifndef isGRAPH
 #define isGRAPH(c) (isALNUM(c) || isPUNCT(c))
@@ -1195,14 +1206,14 @@ sv_setuv(my_cxt_sv, PTR2UV(my_cxtp))
 #define UVof "lo"
 #define UVxf "lx"
 #define UVXf "lX"
-#else
-#if IVSIZE == INTSIZE
+#elif IVSIZE == INTSIZE
 #define IVdf "d"
 #define UVuf "u"
 #define UVof "o"
 #define UVxf "x"
 #define UVXf "X"
-#endif
+#else
+#error "cannot define IV/UV formats"
 #endif
 #endif
 #ifndef NVef
@@ -1537,6 +1548,10 @@ sv_2pv_flags(sv, &lp, flags|SV_MUTABLE_RETURN))
 #endif
 #ifndef SvPV_nomg_const_nolen
 #define SvPV_nomg_const_nolen(sv) SvPV_flags_const_nolen(sv, 0)
+#endif
+#ifndef SvPV_nomg_nolen
+#define SvPV_nomg_nolen(sv) ((SvFLAGS(sv) & (SVf_POK)) == SVf_POK \
+? SvPVX(sv) : sv_2pv_flags(sv, DPPP_SVPV_NOLEN_LP_ARG, 0))
 #endif
 #ifndef SvPV_renew
 #define SvPV_renew(sv,n) STMT_START { SvLEN_set(sv, n); \
