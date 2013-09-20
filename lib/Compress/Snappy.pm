@@ -2,8 +2,8 @@ package Compress::Snappy;
 
 use strict;
 use warnings;
-use parent qw(Exporter);
 
+use Exporter qw(import);
 use XSLoader;
 
 our $VERSION    = '0.20';
