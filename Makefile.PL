@@ -16,10 +16,7 @@ my %conf = (
     LICENSE        => 'perl',
     VERSION_FROM   => 'lib/Compress/Snappy.pm',
     ABSTRACT_FROM  => 'lib/Compress/Snappy.pm',
-    PREREQ_PM      => {
-        XSLoader => 0,
-        parent   => 0,
-    },
+    PREREQ_PM      => { XSLoader => 0 },
     BUILD_REQUIRES => { 'Test::More' => 0.82, },
     META_MERGE     => {
         resources => {
