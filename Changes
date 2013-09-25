@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.22  Wed Sep 25 19:03:40 UTC 2013
+    - Restored compatibility with perl 5.6.
+
 0.21  Fri Sep 20 06:31:33 UTC 2013
     - Added fix for DragonFlyBSD.
     - Integrated latest csnappy source for change in block size.
