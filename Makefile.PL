@@ -1,8 +1,7 @@
 use strict;
 use warnings;
-use ExtUtils::MakeMaker;
 
-use lib qw(inc);
+use ExtUtils::MakeMaker 6.52;
 use Devel::CheckLib;
 
 my $ctz = check_lib(
@@ -11,12 +10,16 @@ my $ctz = check_lib(
 ) ? '-DHAVE_BUILTIN_CTZ' : '';
 
 my %conf = (
-    NAME           => 'Compress::Snappy',
-    AUTHOR         => 'gray <gray@cpan.org>',
-    LICENSE        => 'perl',
-    VERSION_FROM   => 'lib/Compress/Snappy.pm',
-    ABSTRACT_FROM  => 'lib/Compress/Snappy.pm',
-    PREREQ_PM      => {
+    NAME               => 'Compress::Snappy',
+    AUTHOR             => 'gray <gray@cpan.org>',
+    LICENSE            => 'perl',
+    VERSION_FROM       => 'lib/Compress/Snappy.pm',
+    ABSTRACT_FROM      => 'lib/Compress/Snappy.pm',
+    CONFIGURE_REQUIRES => {
+        'Devel::CheckLib'     => 0,
+        'ExtUtils::MakeMaker' => 6.52,
+    },
+    PREREQ_PM          => {
         Exporter => '5.57',
         XSLoader => 0,
     },
@@ -29,15 +32,14 @@ my %conf = (
 
     DEFINE => $ctz,
 
-    dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean  => { FILES    => 'Compress-Snappy-*' },
+    dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean => { FILES    => 'Compress-Snappy-*' },
 );
 
 my $eumm_version =  do {
     no warnings 'numeric';
     eval $ExtUtils::MakeMaker::VERSION;
 };
-delete $conf{META_MERGE} if $eumm_version < 6.46;
 $conf{PREREQ_PM} = {
     %{ $conf{PREREQ_PM} || {} }, %{ delete $conf{BUILD_REQUIRES} },
 } if ($conf{BUILD_REQUIRES} and $eumm_version < 6.5503);
