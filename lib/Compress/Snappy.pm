@@ -6,7 +6,7 @@ use warnings;
 use Exporter qw(import);
 use XSLoader;
 
-our $VERSION    = '0.22';
+our $VERSION    = '0.23';
 our $XS_VERSION = $VERSION;
 $VERSION = eval $VERSION;
 

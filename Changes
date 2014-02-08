@@ -1,5 +1,8 @@
 Revision history for Compress-Snappy
 
+0.23  Sat Feb  8 03:56:15 UTC 2014
+    - Added Devel::CheckLib to configure_requires, instead of bundling it.
+
 0.22  Wed Sep 25 19:03:40 UTC 2013
     - Restored compatibility with perl 5.6.
 
