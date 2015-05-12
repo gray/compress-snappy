@@ -3,6 +3,10 @@ use warnings;
 use Test::More;
 use Compress::Snappy;
 
+for (qw(compress decompress uncompress)) {
+    ok eval "defined &$_", "$_() is exported";
+}
+
 {
     no warnings 'uninitialized';
     my $compressed = compress(undef);
@@ -31,6 +35,14 @@ for my $len (0 .. 1_024) {
     package main;
     my $scalar = TrimmedString->new('  string  ');
     ok compress($scalar) eq compress('string'), 'blessed scalar ref';
+}
+
+{
+    my $compressed = compress('string');
+    ok compress(substr 'string', 0) eq $compressed,
+        'compressing magical substr lvalue';
+    ok uncompress(substr $compressed, 0) eq uncompress($compressed),
+        'uncompressing magical substr lvalue';
 }
 
 done_testing;

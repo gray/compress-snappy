@@ -23,8 +23,11 @@ PREINIT:
     uint32_t dest_len;
     void *working_memory;
 CODE:
-    if (SvROK(sv) && ! SvAMAGIC(sv))
+    SvGETMAGIC(sv);
+    if (SvROK(sv) && ! SvAMAGIC(sv)) {
         sv = SvRV(sv);
+        SvGETMAGIC(sv);
+    }
     if (! SvOK(sv))
         XSRETURN_NO;
     src = SvPVbyte(sv, src_len);
@@ -60,8 +63,11 @@ PREINIT:
     int header_len;
 CODE:
     PERL_UNUSED_VAR(ix); /* -W */
-    if (SvROK(sv))
+    SvGETMAGIC(sv);
+    if (SvROK(sv) && ! SvAMAGIC(sv)) {
         sv = SvRV(sv);
+        SvGETMAGIC(sv);
+    }
     if (! SvOK(sv))
         XSRETURN_NO;
     src = SvPVbyte(sv, src_len);
