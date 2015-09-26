@@ -102,7 +102,7 @@ compression modules available on CPAN.  These are the results on a MacBook
 
 =head1 SEE ALSO
 
-L<http://code.google.com/p/snappy/>
+L<http://google.github.io/snappy/>
 
 L<https://github.com/zeevt/csnappy>
 
